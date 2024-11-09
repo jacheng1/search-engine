@@ -1,24 +1,41 @@
-Building the inverted index:
-Now that you have been provided the HTML files to index, you may build your inverted index off of them. The inverted index is simply a map with the token as a key and a list of its corresponding postings. A posting is the representation of the token’s occurrence in a document. The posting typically (not limited to) contains the following info (you are encouraged to think of other attributes that you could add to the index):
 
-The document name/id the token was found in.
-Its tf-idf score for that document (for MS1, add only the term frequency)
- Some tips:
+# Inverted Index Project
 
-When designing your inverted index, you will think about the structure of your posting first.
-You would normally begin by implementing the code to calculate/fetch the elements which will constitute your posting.
-Use scripts/classes that will perform a function or a set of closely related functions. This helps in keeping track of your progress, debugging, and also dividing work amongst teammates if you’re in a group.
-We strongly recommend you use GitHub as a mechanism to work with your team members on this project, but please make the project private.
-Deliverables: Submit your code and a report (in PDF format) with a table containing some analytics about your index. The minimum analytics are:  
+## Overview
 
-The number of indexed documents;
-The number of unique tokens;
-The total size (in KB) of your index on disk.
-Note for the developer option: at this time, you do not need to have the optimized index, but you may save time if you do. 
-No late submissions will be accepted for this milestone.
+This project involves building an inverted index from a set of HTML files. The inverted index is a map that associates tokens (words) with postings, where each posting contains information about the token's occurrence in a document. This project will require you to design a posting structure, calculate term frequency (TF), and generate basic analytics about your index.
 
-Evaluation criteria:
+## Deliverables
 
-Did your report show up on time?
-Are the reported numbers plausible?
-Important note: You can only change teams between the milestones of Assignment 3 if there are strong reasons for doing so. Please, write an email to the teaching team explaining why you need to change teams and we will assess your situation.
+1. **Code**: Submit your complete code that implements the inverted index.
+2. **Report (PDF)**: Submit a PDF report with the following analytics:
+   - The number of indexed documents.
+   - The number of unique tokens.
+   - The total size (in KB) of the index on disk.
+
+**Note**: The developer option does not require an optimized index at this point, but building one may save you time later.
+
+## Design Tips
+
+- **Posting Structure**: The posting should contain:
+  - The document ID or name where the token was found.
+  - The term frequency (TF) for the token in that document.
+  - (Optional) Other information you deem useful for your index.
+
+- **Coding Approach**: 
+  - Break down the code into scripts or classes that perform related functions.
+  - This modular approach will help you track your progress and debug more efficiently.
+  - Use GitHub to collaborate with teammates, but ensure the project is set to private.
+
+## Submission Details
+
+- **Report**: Ensure your report includes the required analytics and is submitted on time.
+- **GitHub Repository**: Submit the link to your private GitHub repository.
+- **Late Submission**: No late submissions will be accepted for this milestone.
+
+## Evaluation Criteria
+
+1. **Timeliness**: Was your report submitted on time?
+2. **Accuracy**: Are the numbers reported in the analytics plausible?
+
+**Important**: You can only change teams between milestones of Assignment 3 if there are strong reasons. If you need to change teams, please email the teaching team explaining the reason, and they will assess your situation.
