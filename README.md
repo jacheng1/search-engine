@@ -1,5 +1,5 @@
 
-# Inverted Index Project
+# Inverted Index
 
 ## Overview
 
