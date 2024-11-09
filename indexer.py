@@ -1,5 +1,12 @@
 import os
+import json
+from bs4 import BeautifulSoup
 from collections import defaultdict
+
+# Tokens: all alphanumeric sequences in the dataset.
+# Stop words: do not use stopping, i.e. use all words, even the frequently occurring ones.
+# Stemming: use stemming for better textual matches. Suggestion: Porter stemming.
+# Important words: Words in bold, in headings (h1, h2, h3), and in titles should be treated as more important than the other words.
 
 class InvertedIndex:
     def __init__(self):
@@ -18,7 +25,7 @@ class InvertedIndex:
 
     
     def build_index(self, html_dir):
-        
+
     
 
     
