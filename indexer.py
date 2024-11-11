@@ -1,5 +1,8 @@
 import os
 import json
+import zipfile
+import string
+
 from bs4 import BeautifulSoup
 from collections import defaultdict
 from nltk.stem import PorterStemmer
@@ -18,10 +21,16 @@ ps = PorterStemmer()
 # Define inverted index
 inverted_index = defaultdict(list)
 
+def setup_partial_index():
+    os.makedirs("partial-index", exist_ok=True)
+    index_files = {}
+
+
+
 def tokenize_text(text):
-    with open("", "w") as f:
+    with open(text, "w") as f:
         f.write(text)
-    return tokenize("")
+    return tokenize(text)
 
 def stem_tokens(tokens):
     return [ps.stem(token) for token in tokens]
@@ -41,34 +50,31 @@ def process_json(file_path):
             body_text += soup.get_text()
 
 
-def build_index(json_dir):
+def build_index(docs):
     # Build inverted index from JSON files
     doc_id = 0
 
-    for filename in os.listdir(json_dir):
-        if filename.endswith(".json"):
-            file_path = os.path.join(json_dir, filename)
+    # I <- HashTable() == inverted_index = defaultdict(list)
 
-            important_text, body_text = process_json(file_path)
+    for doc in os.listdir(docs):
+        doc_id += 1
+        
+        # Parse document into tokens
+        file_path = os.path.join(docs, doc)
 
-            important_tokens = stem_tokens(tokenize_text(important_text))
-            body_tokens = stem_tokens(tokenize_text(body_text))
+        important_text, body_text = process_json(file_path)
 
-            for token in important_tokens:
-                inverted_index[token].append((doc_id, "important"))
-            for token in body_tokens:
-                inverted_index[token].append((doc_id, "body"))
+        important_tokens = stem_tokens(tokenize_text(important_text))
+        body_tokens = stem_tokens(tokenize_text(body_text))
 
-            doc_id += 1
+        for token in important_tokens:
+            inverted_index[token].append((doc_id, "important"))
+        for token in body_tokens:
+            inverted_index[token].append((doc_id, "body"))
 
-def indexer(json_dir):
-    try:
-        os.makedirs("directory", exist_ok=True)
-        build_index(json_dir)
 
-    except FileExistsError as e:
-        print(e)
-        return
+            
+
 
 
 
