@@ -10,6 +10,8 @@ from tokenizers.remo.PartA import * # change to your desired tokenizer
 # Stemming: use stemming for better textual matches. Suggestion: Porter stemming.
 # Important words: Words in bold, in headings (h1, h2, h3), and in titles should be treated as more important than the other words.
 
+NUM_OF_DOCS = 56000
+
 # Init Porter Stemmer
 ps = PorterStemmer()
 
@@ -61,15 +63,13 @@ def build_index(json_dir):
 
 def indexer(json_dir):
     try:
-        os.mkdirs("directory.txt", exists_ok=True)
+        os.makedirs("directory", exist_ok=True)
         build_index(json_dir)
 
     except FileExistsError as e:
         print(e)
         return
 
-json_dir = ""
-indexer(json_dir)
 
 
 
