@@ -3,6 +3,9 @@ import json
 import zipfile
 import string
 import math
+import nltk
+
+nltk.download('punkt_tab')
 
 from bs4 import BeautifulSoup
 from collections import defaultdict
@@ -16,15 +19,12 @@ from tokenizers.remo.PartA import tokenize, compute_word_frequencies
 # Stemming: use stemming for better textual matches. Suggestion: Porter stemming.
 # Important words: Words in bold, in headings (h1, h2, h3), and in titles should be treated as more important than the other words.
 
-NUM_OF_DOCS = 56000
-
 def create_directory():
     try:
         os.makedirs("partial-index", exist_ok=True) 
         print("Directory 'partial-index' is ready.")
     except FileExistsError as e:
         print(f"Error creating directory: {e}")
-
 
 def tokenize_text(text:str)->list:
     ps = PorterStemmer()
@@ -39,96 +39,75 @@ def tokenize_text(text:str)->list:
     
     return alnum_list
 
-def indexer():
-    create_directory()
+# Indexing and file parsing
+class Indexer:
+    def __init__(self, num_of_docs):
+        self.num_of_docs = 56000
+        self.index = defaultdict(lambda: defaultdict(lambda: [0, 0]))
+        self.doc_id = 0
+        self.partial_dict = self.create_partial_files()
+    
+    def create_partial_files(self):
+        partial_dict = {}
+        index_range = string.ascii_lowercase + string.digits + "!"
+        for i in index_range:
+            path = f"partial-index/{i}.txt"
+            with open(path, "w", encoding="UTF-8") as partial_file:
+                partial_dict[i] = partial_file
+        
+        return partial_dict
 
-    index_range = string.ascii_lowercase + string.digits + "!"
-    partial_dict = {}
+    def process_zip(self, zip_path):
+        # Process zip file and build index
+        with open("doc_id.txt", "a", encoding="UTF-8") as lookup:
+            with zipfile.ZipFile(zip_path, "r") as zippedFile:
+                files = zippedFile.namelist()
+                for file_name in files:
+                    try:
+                        if file_name.endswith('.json'):
+                            self.process_json_file(zippedFile, file_name, lookup)
+                    except Exception as e:
+                        print(f"Error processing file {file_name}: {e}")
 
-    for i in index_range:
-        path = f"partial-index/{i}.txt"
-        with open(path, "w", encoding="UTF-8") as partial_file:
-            partial_dict[i] = partial_file
+    def process_json_file(self, zippedFile, file_name, lookup):
+        # Process JSON file and update the index
+        with zippedFile.open(file_name) as json_file:
+            try:
+                json_content = json_file.read()
+                json_dict = json.loads(json_content)
+                page_soup = BeautifulSoup(json_dict['content'], 'html.parser')
 
-    # Iterates through .json files
-    index = defaultdict(lambda: defaultdict(lambda: [0, 0]))
+                # Extract important text
+                important_text_len = self.process_important_text(page_soup)
 
-    offload_dict = True
+                # Process rest of text
+                self.process_normal_text(page_soup)
 
-    with open("doc_id.txt", "a", encoding="UTF-8") as lookup:
-        with zipfile.ZipFile("developer.zip", "r") as zippedFile:
-            files = zippedFile.namelist()
-            doc_id = 0
-
-            for file_name in files:
-                try:
-                    ext = os.path.splitext(file_name)[-1].lower()
-
-                    if ext == '.json':
-                        with zippedFile.open(file_name) as json_file:
-
-                            try:
-                                json_content = json_file.read()
-                                json_dict = json.loads(json_content)
-                                page_soup = BeautifulSoup(json_dict['content'], 'html.parser')
-                            
-                                text = page_soup.find_all(['title', 'h1', 'h2', 'h3', 'b', 'strong'])
-                                important_text_len = len(text)
-                                
-                                for chunk in text:
-                                    word_list = tokenize(chunk.get_text())
-                                    word_list = [stemmer.stem(word) for word in word_list]
-                                    word_freq = compute_word_frequencies(word_list)
-                                    for key in word_freq:
-                                        index[key][doc_id][1] += word_freq[key]
-
-                                # Ignore tags and process rest
-                                skipped_tags = ['title', 'h1', 'h2', 'h3', 'b', 'strong']
-                                for tag in skipped_tags:
-                                    [s.extract() for s in page_soup(tag)]
-
-                                text = page_soup.find_all()
-                                text_len = len(text)
-
-                                for chunk in text:
-                                    word_list = tokenize(chunk.get_text())
-                                    word_list = [stemmer.stem(word) for word in word_list]
-                                    word_freq = compute_word_frequencies(word_list)
-                                    for key in word_freq:
-                                        index[key][doc_id][0] += word_freq[key]
-
-                                if text_len + important_text_len > 0:
-                                    doc_id += 1
-                                    lookup.write("{} {}\n".format(doc_id, json_dict['url']))
-
-                                if offload_dict is True:
-                                    if doc_id > (NUM_OF_DOCS / 5) * 4:
-                                        index = offload(index, partial_dict)
-                                        offload_dict = False
-                                    elif doc_id > (NUM_OF_DOCS / 5) * 3:
-                                        index = offload(index, partial_dict)
-                                    elif doc_id > (NUM_OF_DOCS / 5) * 2:
-                                        index = offload(index, partial_dict)
-                                    elif doc_id > (NUM_OF_DOCS / 5):
-                                        index = offload(index, partial_dict)
-                            
-                            except json.JSONEncoder:
-                                print(f"JSONDecodeError in file {file_name}: Skipping file.")
-                            except KeyError as e:
-                                print(f"KeyError: Missing expected key in '{file_name}' - {e}: Skipping file.")
-                                
-                except FileNotFoundError:
-                    print(f"Error: The file '{file_name}' was not found or is corrupt.")
+                if important_text_len > 0:
+                    self.doc_id += 1
+                    lookup.write(f"{self.doc_id} {json_dict['url']}\n")
                 
-                except zipfile.BadZipFile:
-                    print("BadZipFile Error: The ZIP file itself is corrupted or invalid.")
-                    break  # Stop processing if the zip file itself is corrupted
-                    
-        offload(index, partial_dict)
-        update_index(partial_dict, doc_id)
+                self.offload_data_if_needed()
+            
+            except json.JSONDecodeError as e:
+                print(f"JSONDecodeError in file {file_name}: Skipping file.")
+            except KeyError as e:
+                print(f"KeyError: Missing expected key in '{file_name}' - {e}: Skipping file.")
 
-        for key in partial_dict.keys():
-            partial_dict[key].close()
+    def process_important_text(self, page_soup):
+        # Process important text (headings, title, etc).
+        text = page_soup.find_all(['title', 'h1', 'h2', 'h3', 'b', 'strong'])
+        
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -185,6 +164,3 @@ def update_index(files, doc_nums):
                     files[letter].write("\n")
 
 if __name__ == "__main__":
-    indexer()
-
-
