@@ -97,38 +97,69 @@ class Indexer:
     def process_important_text(self, page_soup):
         # Process important text (headings, title, etc).
         text = page_soup.find_all(['title', 'h1', 'h2', 'h3', 'b', 'strong'])
+        important_text_len = len(text)
+
+        for word_chunk in text:
+            word_list = tokenize_text(word_chunk.get_text())
+            word_freq = compute_word_frequencies(word_list)
+            for key in word_freq:
+                self.index[key][self.doc_id][1] += word_freq[key]
+        
+        return important_text_len
+
+    def process_normal_text(self, page_soup):
+        # Process rest of text
+        skipped_tags = ['title', 'h1', 'h2', 'h3', 'b', 'strong']
+        for tag in skipped_tags:
+            [s.extract() for s in page_soup(tag)]
+        
+        text = page_soup.find_all()
+        for word_chunk in text:
+            word_list = tokenize_text(word_chunk.get_text())
+            word_freq = compute_word_frequencies(word_list)
+            for key in word_freq:
+                self.index[key][self.doc_id][0] += word_freq[key]
         
 
+    def offload_data_if_needed(self):
+        # Offload data to partial index 
+        offload_thresholds = [
+            (self.num_of_docs / 5),
+            (self.num_of_docs / 5) * 2,
+            (self.num_of_docs / 5) * 3,
+            (self.num_of_docs / 5) * 4
+        ]
 
+        if self.doc_id > offload_thresholds[3]:
+            self.index = offload(self.index, self.partial_dict)
+        elif self.doc_id > offload_thresholds[2]:
+            self.index = offload(self.index, self.partial_dict)
+        elif self.doc_id > offload_thresholds[1]:
+            self.index = offload(self.index, self.partial_dict)
+        elif self.doc_id > offload_thresholds[0]:
+            self.index = offload(self.index, self.partial_dict)
 
-
-
-
-
-
-
-
-
+# End of class
 
 
 def offload(my_dict, p_dict)->defaultdict:
+    # Offload data into partial index file
     index_list = sorted(my_dict.items(), key=lambda x: (x[0]))
 
     for elem in index_list:
         partial_file = p_dict.get(elem[0][0], p_dict["!"])
-        partial_file.write("{} ".format(elem[0]))
+        partial_file.write(f"{elem[0]} ")
 
         for doc, count in elem[1].items():
-            partial_file.write("{}.{}.{}".format(doc, count[0], count[1]))
+            partial_file.write(f"{doc}.{count[0]}.{count[1]}")
 
-        
         partial_file.write("\n")
 
-    return defaultdict(lambda: defaultdict(lambda: [0, 0]))  # Optional reset if necessary
+    return defaultdict(lambda: defaultdict(lambda: [0, 0]))  # Resets the index
     
 
 def update_index(files, doc_nums):
-    
+    # Updates the vocabulary and final index
     with open("vocab.txt", "w", encoding="UTF-8") as vocab_file:
 
         for letter in sorted(files.keys()):
@@ -137,30 +168,20 @@ def update_index(files, doc_nums):
 
             for line in files[letter]:
                 split_line = line.split()
-
                 for posting in split_line[1:]:
                     split_posting = posting.split(".")
-
                     tf = 1 + int(split_posting[1]) + (int(split_posting[2]) * 2)
-
                     df = len(split_line[1:])
-
                     tf_idf = (1 + math.log10(tf)) * math.log(doc_nums / df)
-                    
                     partial_index[split_line[0]][int(split_posting[0])] = tf_idf
                 
                 files[letter].seek(0)
                 files[letter].truncate(0)
 
                 for key, value in sorted(partial_index.items(), key = lambda x: x[0]):
-
                     vocab_file.write("{} {}\n".format(key, files[letter].tell()))
-
                     files[letter].write(f"{key}")
-
                     for document, score in sorted(value.items(), key = lambda x: x[0]):
                         files[letter].write(f"{document}/{score}")
-                    
                     files[letter].write("\n")
 
-if __name__ == "__main__":
