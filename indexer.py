@@ -7,6 +7,7 @@ import math
 from bs4 import BeautifulSoup
 from collections import defaultdict
 from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
 
 from tokenizers.remo.PartA import tokenize, compute_word_frequencies
 
@@ -24,6 +25,20 @@ def create_directory():
     except FileExistsError as e:
         print(f"Error creating directory: {e}")
 
+
+def tokenize_text(text:str)->list:
+    ps = PorterStemmer()
+    alnum_list = []
+    word_list = word_tokenize(text)
+
+    for word in word_list:
+        word = ps.stem(word)
+
+        if word.isalnum():
+            alnum_list.append(word)
+    
+    return alnum_list
+
 def indexer():
     create_directory()
 
@@ -32,77 +47,90 @@ def indexer():
 
     for i in index_range:
         path = f"partial-index/{i}.txt"
-        partial_file = open(path, "w+", encoding="UTF-8")
-        partial_dict[i] = partial_file
+        with open(path, "w", encoding="UTF-8") as partial_file:
+            partial_dict[i] = partial_file
 
     # Iterates through .json files
     index = defaultdict(lambda: defaultdict(lambda: [0, 0]))
 
     offload_dict = True
-    stemmer = PorterStemmer()
 
     with open("doc_id.txt", "a", encoding="UTF-8") as lookup:
-        
         with zipfile.ZipFile("developer.zip", "r") as zippedFile:
             files = zippedFile.namelist()
             doc_id = 0
 
             for file_name in files:
-                ext = os.path.splitext(file_name)[-1]
+                try:
+                    ext = os.path.splitext(file_name)[-1].lower()
 
-                if ext == '.json':
-                    with zippedFile.open(file_name) as json_file:
+                    if ext == '.json':
+                        with zippedFile.open(file_name) as json_file:
 
-                        json_content = json_file.read()
-                        json_dict = json.loads(json_content)
+                            try:
+                                json_content = json_file.read()
+                                json_dict = json.loads(json_content)
+                                page_soup = BeautifulSoup(json_dict['content'], 'html.parser')
+                            
+                                text = page_soup.find_all(['title', 'h1', 'h2', 'h3', 'b', 'strong'])
+                                important_text_len = len(text)
+                                
+                                for chunk in text:
+                                    word_list = tokenize(chunk.get_text())
+                                    word_list = [stemmer.stem(word) for word in word_list]
+                                    word_freq = compute_word_frequencies(word_list)
+                                    for key in word_freq:
+                                        index[key][doc_id][1] += word_freq[key]
 
-                        page_soup = BeautifulSoup(json_dict['content'], 'html.parser')
+                                # Ignore tags and process rest
+                                skipped_tags = ['title', 'h1', 'h2', 'h3', 'b', 'strong']
+                                for tag in skipped_tags:
+                                    [s.extract() for s in page_soup(tag)]
 
-                        text = page_soup.find_all(['title', 'h1', 'h2', 'h3', 'b', 'strong'])
-                        important_text_len = len(text)
-                        
-                        for chunk in text:
-                            word_list = tokenize(chunk.get_text())
-                            word_list = [stemmer.stem(word) for word in word_list]
-                            word_freq = compute_word_frequencies(word_list)
-                            for key in word_freq:
-                                index[key][doc_id][1] += word_freq[key]
+                                text = page_soup.find_all()
+                                text_len = len(text)
 
+                                for chunk in text:
+                                    word_list = tokenize(chunk.get_text())
+                                    word_list = [stemmer.stem(word) for word in word_list]
+                                    word_freq = compute_word_frequencies(word_list)
+                                    for key in word_freq:
+                                        index[key][doc_id][0] += word_freq[key]
 
-                        skipped_tags = ['title', 'h1', 'h2', 'h3', 'b', 'strong']
-                        for tag in skipped_tags:
-                            [s.extract() for s in page_soup(tag)]
+                                if text_len + important_text_len > 0:
+                                    doc_id += 1
+                                    lookup.write("{} {}\n".format(doc_id, json_dict['url']))
 
-                        text = page_soup.find_all()
-                        text_len = len(text)
-
-                        for chunk in text:
-                            word_list = tokenize(chunk.get_text())
-                            word_list = [stemmer.stem(word) for word in word_list]
-                            word_freq = compute_word_frequencies(word_list)
-                            for key in word_freq:
-                                index[key][doc_id][0] += word_freq[key]
-
-                        if text_len + important_text_len > 0:
-                            doc_id += 1
-                            lookup.write("{} {}\n".format(doc_id, json_dict['url']))
-
-                        if offload_dict is True:
-                            if doc_id > (NUM_OF_DOCS / 5) * 4:
-                                index = offload(index, partial_dict)
-                                offload_dict = False
-                            elif doc_id > (NUM_OF_DOCS / 5) * 3:
-                                index = offload(index, partial_dict)
-                            elif doc_id > (NUM_OF_DOCS / 5) * 2:
-                                index = offload(index, partial_dict)
-                            elif doc_id > (NUM_OF_DOCS / 5):
-                                index = offload(index, partial_dict)
+                                if offload_dict is True:
+                                    if doc_id > (NUM_OF_DOCS / 5) * 4:
+                                        index = offload(index, partial_dict)
+                                        offload_dict = False
+                                    elif doc_id > (NUM_OF_DOCS / 5) * 3:
+                                        index = offload(index, partial_dict)
+                                    elif doc_id > (NUM_OF_DOCS / 5) * 2:
+                                        index = offload(index, partial_dict)
+                                    elif doc_id > (NUM_OF_DOCS / 5):
+                                        index = offload(index, partial_dict)
+                            
+                            except json.JSONEncoder:
+                                print(f"JSONDecodeError in file {file_name}: Skipping file.")
+                            except KeyError as e:
+                                print(f"KeyError: Missing expected key in '{file_name}' - {e}: Skipping file.")
+                                
+                except FileNotFoundError:
+                    print(f"Error: The file '{file_name}' was not found or is corrupt.")
+                
+                except zipfile.BadZipFile:
+                    print("BadZipFile Error: The ZIP file itself is corrupted or invalid.")
+                    break  # Stop processing if the zip file itself is corrupted
                     
-    offload(index, partial_dict)
-    update_index(partial_dict, doc_id)
+        offload(index, partial_dict)
+        update_index(partial_dict, doc_id)
 
-    for key in partial_dict.keys():
-        partial_dict[key].close()
+        for key in partial_dict.keys():
+            partial_dict[key].close()
+
+
 
 def offload(my_dict, p_dict)->defaultdict:
     index_list = sorted(my_dict.items(), key=lambda x: (x[0]))
@@ -122,7 +150,7 @@ def offload(my_dict, p_dict)->defaultdict:
 
 def update_index(files, doc_nums):
     
-    with open("vocab.txt", "a", encoding="UTF-8") as vocab_file:
+    with open("vocab.txt", "w", encoding="UTF-8") as vocab_file:
 
         for letter in sorted(files.keys()):
             partial_index = defaultdict(lambda: defaultdict())
