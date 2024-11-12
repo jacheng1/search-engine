@@ -19,6 +19,8 @@ from tokenizers.remo.PartA import tokenize, compute_word_frequencies
 # Stemming: use stemming for better textual matches. Suggestion: Porter stemming.
 # Important words: Words in bold, in headings (h1, h2, h3), and in titles should be treated as more important than the other words.
 
+NUM_OF_DOCS = 56000
+
 def create_directory():
     try:
         os.makedirs("partial-index", exist_ok=True) 
@@ -42,7 +44,7 @@ def tokenize_text(text:str)->list:
 # Indexing and file parsing
 class Indexer:
     def __init__(self, num_of_docs):
-        self.num_of_docs = 56000
+        self.num_of_docs = num_of_docs
         self.index = defaultdict(lambda: defaultdict(lambda: [0, 0]))
         self.doc_id = 0
         self.partial_dict = self.create_partial_files()
@@ -185,3 +187,11 @@ def update_index(files, doc_nums):
                         files[letter].write(f"{document}/{score}")
                     files[letter].write("\n")
 
+if __name__ == "__main__":
+    indexer = Indexer(NUM_OF_DOCS)
+    indexer.process_zip("developer.zip")
+    offload(indexer.index, indexer.partial_dict)
+    update_index(indexer.partial_dict, indexer.doc_id)
+
+    for key in indexer.partial_dict:
+        indexer.partial_dict[key].close()
