@@ -35,7 +35,6 @@ def tokenize_text(text:str)->list:
 
     for word in word_list:
         word = ps.stem(word)
-
         if word.isalnum():
             alnum_list.append(word)
     
@@ -50,14 +49,19 @@ class Indexer:
         self.partial_dict = self.create_partial_files()
     
     def create_partial_files(self):
+        # Creates and keeps open all partial index files.
         partial_dict = {}
-        index_range = string.ascii_lowercase + string.digits + "!"
+        index_range = string.ascii_lowercase + string.digits + "!" # ! for non english symbols
         for i in index_range:
             path = f"partial-index/{i}.txt"
-            with open(path, "w", encoding="UTF-8") as partial_file:
-                partial_dict[i] = partial_file
+            partial_dict[i] = open(path, "a", encoding="UTF-8")
         
         return partial_dict
+    
+    def close_partial_files(self):
+        # Closes all partial index files
+        for file in self.partial_dict.values():
+            file.close()
 
     def process_zip(self, zip_path):
         # Process zip file and build index
@@ -98,6 +102,7 @@ class Indexer:
 
     def process_important_text(self, page_soup):
         # Process important text (headings, title, etc).
+        # Frequencies are saved in the second position in index entry
         text = page_soup.find_all(['title', 'h1', 'h2', 'h3', 'b', 'strong'])
         important_text_len = len(text)
 
@@ -111,6 +116,7 @@ class Indexer:
 
     def process_normal_text(self, page_soup):
         # Process rest of text
+        # Frequencies are saved in the first position in index entry
         skipped_tags = ['title', 'h1', 'h2', 'h3', 'b', 'strong']
         for tag in skipped_tags:
             [s.extract() for s in page_soup(tag)]
@@ -125,6 +131,8 @@ class Indexer:
 
     def offload_data_if_needed(self):
         # Offload data to partial index 
+        # Checks if doc_id exceeds any threshold and triggers offload to save 
+        # current index to partial index files 
         offload_thresholds = [
             (self.num_of_docs / 5),
             (self.num_of_docs / 5) * 2,
@@ -132,20 +140,16 @@ class Indexer:
             (self.num_of_docs / 5) * 4
         ]
 
-        if self.doc_id > offload_thresholds[3]:
-            self.index = offload(self.index, self.partial_dict)
-        elif self.doc_id > offload_thresholds[2]:
-            self.index = offload(self.index, self.partial_dict)
-        elif self.doc_id > offload_thresholds[1]:
-            self.index = offload(self.index, self.partial_dict)
-        elif self.doc_id > offload_thresholds[0]:
-            self.index = offload(self.index, self.partial_dict)
+        for threshold in offload_thresholds:
+            if self.doc_id > threshold:
+                self.index = offload(self.index, self.partial_dict)
+                break
 
 # End of class
 
-
 def offload(my_dict, p_dict)->defaultdict:
     # Offload data into partial index file
+    # Writes current in-memory index to appropriate partial index file in p_dict
     index_list = sorted(my_dict.items(), key=lambda x: (x[0]))
 
     for elem in index_list:
@@ -162,18 +166,27 @@ def offload(my_dict, p_dict)->defaultdict:
 
 def update_index(files, doc_nums):
     # Updates the vocabulary and final index
+    # Uses tf-idf for each term-document pair
+    # Final index data back to partial index files and records vocabulary 
+    # in vocab.txt
+
+    # Format is term doc_id/tf_idf
     with open("vocab.txt", "w", encoding="UTF-8") as vocab_file:
 
-        for letter in sorted(files.keys()):
+        for letter in sorted(files.keys()): # iterate over each partial index file
             partial_index = defaultdict(lambda: defaultdict())
-            files[letter].seek(0)
+            files[letter].seek(0) # Ensures reading from beginning
 
             for line in files[letter]:
                 split_line = line.split()
+
+                # split_posting[0] : doc_id
+                # split_posting[1] : regular text frequency
+                # split_posting[2] : important text frequency
                 for posting in split_line[1:]:
-                    split_posting = posting.split(".")
-                    tf = 1 + int(split_posting[1]) + (int(split_posting[2]) * 2)
-                    df = len(split_line[1:])
+                    split_posting = posting.split(".") 
+                    tf = 1 + int(split_posting[1]) + (int(split_posting[2]) * 2) # term freq
+                    df = len(split_line[1:]) # doc freq
                     tf_idf = (1 + math.log10(tf)) * math.log(doc_nums / df)
                     partial_index[split_line[0]][int(split_posting[0])] = tf_idf
                 
@@ -190,8 +203,10 @@ def update_index(files, doc_nums):
 if __name__ == "__main__":
     indexer = Indexer(NUM_OF_DOCS)
     indexer.process_zip("developer.zip")
+
+    # Offload and update the final index after all files are processed
     offload(indexer.index, indexer.partial_dict)
     update_index(indexer.partial_dict, indexer.doc_id)
 
-    for key in indexer.partial_dict:
-        indexer.partial_dict[key].close()
+    indexer.close_partial_files()
+    
