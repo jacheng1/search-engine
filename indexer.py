@@ -170,35 +170,43 @@ def update_index(files, doc_nums):
     # Final index data back to partial index files and records vocabulary 
     # in vocab.txt
 
-    # Format is term doc_id/tf_idf
-    with open("vocab.txt", "w", encoding="UTF-8") as vocab_file:
-
+    with open("vocab.txt", "a", encoding="UTF-8") as vocab:
+        # Format is term doc_id/tf_idf
         for letter in sorted(files.keys()): # iterate over each partial index file
-            partial_index = defaultdict(lambda: defaultdict())
-            files[letter].seek(0) # Ensures reading from beginning
 
-            for line in files[letter]:
-                split_line = line.split()
+            with open(f"partial-index/{letter}.txt", "r+", encoding="UTF-8") as file:
+                partial_index = defaultdict(lambda: defaultdict())
 
-                # split_posting[0] : doc_id
-                # split_posting[1] : regular text frequency
-                # split_posting[2] : important text frequency
-                for posting in split_line[1:]:
-                    split_posting = posting.split(".") 
-                    tf = 1 + int(split_posting[1]) + (int(split_posting[2]) * 2) # term freq
-                    df = len(split_line[1:]) # doc freq
-                    tf_idf = (1 + math.log10(tf)) * math.log(doc_nums / df)
-                    partial_index[split_line[0]][int(split_posting[0])] = tf_idf
-                
-                files[letter].seek(0)
-                files[letter].truncate(0)
+                file.seek(0)
+                lines = file.readlines()
+
+                for line in lines:
+                    split_line = line.split()
+
+                    # split_posting[0] : doc_id
+                    # split_posting[1] : regular text frequency
+                    # split_posting[2] : important text frequency
+                    for posting in split_line[1:]:
+                        split_posting = posting.split(".") 
+                        tf = 1 + int(split_posting[1]) + (int(split_posting[2]) * 2) # term freq
+                        df = len(split_line[1:]) # doc freq
+                        tf_idf = (1 + math.log10(tf)) * math.log(doc_nums / df)
+                        partial_index[split_line[0]][int(split_posting[0])] = tf_idf
+                    
+                file.seek(0)
+                file.truncate(0)
 
                 for key, value in sorted(partial_index.items(), key = lambda x: x[0]):
-                    vocab_file.write("{} {}\n".format(key, files[letter].tell()))
-                    files[letter].write(f"{key}")
+                    try:
+                        vocab.write(f"{key} {file.tell()}\n")
+                    except Exception as e:
+                        print(f"Error writing to vocab file: {e}")
+                    
+                    # Write term postings to partial index file
+                    file.write(f"{key}")
                     for document, score in sorted(value.items(), key = lambda x: x[0]):
-                        files[letter].write(f"{document}/{score}")
-                    files[letter].write("\n")
+                        file.write(f" {document}/{score}")
+                    file.write("\n")
 
 if __name__ == "__main__":
     indexer = Indexer(NUM_OF_DOCS)
