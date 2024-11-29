@@ -12,7 +12,9 @@
 ```
 cd backend
 python api.py
-cd ..
+```
+
+```
 cd frontend
 npm run dev
 ```
