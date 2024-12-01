@@ -21,7 +21,7 @@ ROOT_DOMAIN_MAPPING = {
 
 async def fetch_metadata_async(url, session):
     try:
-        async with session.get(url, timeout=5) as response:
+        async with session.get(url, ssl=False, timeout=5) as response:
             response.raise_for_status()
             html = await response.text()
             soup = BeautifulSoup(html, "html.parser")
