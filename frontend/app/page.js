@@ -1,5 +1,6 @@
 'use client'
 
+import ClearIcon from "@mui/icons-material/Clear";
 import SearchIcon from "@mui/icons-material/Search";
 import { Box, TextField, Typography, InputAdornment, IconButton } from "@mui/material";
 import { useState } from "react";
@@ -13,6 +14,7 @@ export default function SearchPage() {
     if (!query) {
       return;
     }
+
     setLoading(true);
 
     try {
@@ -21,14 +23,22 @@ export default function SearchPage() {
 
       if (response.ok) {
         setResults(data.results);
+
       } else {
         console.error("Error:", data.error);
+
       }
     } catch (error) {
       console.error("Error fetching results:", error);
+
     } finally {
       setLoading(false);
+
     }
+  };
+
+  const handleClear = () => {
+    setQuery("");
   };
 
   const colors = ["#4285F4", "#EA4335", "#FBBC05", "#34A853"];
@@ -36,13 +46,13 @@ export default function SearchPage() {
 
   return (
     <>
-      <Box style={{ padding: "25px", fontFamily: "Arial, sans-serif" }}>
+      <Box style={{ padding: "25px", fontFamily: "Arial, sans-serif" }} sx={{ backgroundColor: "#F8F9FA" }}>
         <Box
           style={{
             display: "flex",
             alignItems: "center",
             gap: "40px",
-            marginBottom: "20px"
+            marginBottom: "10px"
           }}
         >
           <Typography variant="h4" component="div" style={{ display: "flex", alignItems: "center", margin: 0 }}>
@@ -69,11 +79,26 @@ export default function SearchPage() {
                 }
               }}
               InputProps={{
-                style: { borderRadius: "25px" },
+                style: { borderRadius: "25px", backgroundColor: "#FFFFFF" },
                 endAdornment: (
                   <InputAdornment position="end">
+                    {query && (
+                      <IconButton onClick={handleClear}>
+                        <ClearIcon sx={{ color: "#5F6368" }} />
+                      </IconButton>
+                    )}
+                    {query && (
+                      <Box
+                        sx={{
+                          width: "1px",
+                          height: "36px",
+                          backgroundColor: "lightgray",
+                          margin: "0 8px"
+                        }}
+                      />
+                    )}
                     <IconButton onClick={handleSearch}>
-                      <SearchIcon sx={{ color: "#4285F4" }}/>
+                      <SearchIcon sx={{ color: "#4285F4" }} />
                     </IconButton>
                   </InputAdornment>
                 ),
@@ -89,17 +114,29 @@ export default function SearchPage() {
           width: "100%",
           marginLeft: 0,
           marginRight: 0,
-          marginBottom: "20px"
+          marginBottom: "10px"
         }}
       ></div>
-      <Box style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
+      <Box style={{ padding: "20px", marginLeft: "210px", fontFamily: "Arial, sans-serif" }}>
+        <Typography style={{ fontFamily: "Arial, sans-serif" }} sx={{ color: "#5F6368", fontSize: "15px", marginTop: "-20px", marginBottom: "20px" }}>About results (seconds)</Typography>
         {loading && <Typography variant="h6">Loading...</Typography>}
         {results.map((result, index) => (
-          <Typography key={index}>
-            <a href={result[0]} target="_blank" rel="noopener noreferrer">
-              {result[0]} (Score: {result[1].toFixed(2)})
-            </a>
-          </Typography>
+          <Box key={index} sx={{ marginBottom: "20px" }}>
+            <Typography sx={{ fontSize: "12px" }}>
+              {result.domain}
+            </Typography>
+            <Typography sx={{ color: "#5F6368", fontSize: "12px" }}>
+              {result.url}
+            </Typography>
+            <Typography variant="h5" sx={{ color: "#5F6368" }}>
+              <a href={result.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                {result.title}
+              </a>
+            </Typography>
+            <Typography sx={{ color: "#5F6368" }}>
+              {result.description}
+            </Typography>
+          </Box>
         ))}
       </Box>
     </>
