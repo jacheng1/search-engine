@@ -48,6 +48,54 @@ export default function SearchPage() {
   const colors = ["#4285F4", "#EA4335", "#FBBC05", "#34A853"];
   const text = "Zotsearch";
 
+  const formatTitle = (text, threshold) => {
+    if (!text) {
+      return "No Title Available";
+    }
+
+    let formattedText = "";
+    let words = text.split(" ");
+    let currentLength = 0;
+  
+    for (let word of words) {
+      if (currentLength + word.length > threshold) {
+        formattedText += "\n";
+
+        currentLength = 0;
+      }
+
+      formattedText += word + " ";
+
+      currentLength += word.length + 1;
+    }
+  
+    return formattedText.trim();
+  };
+
+  const formatDescription = (description, threshold) => {
+    if (!description) {
+      return "No Description Available";
+    }
+
+    let formattedDescription = "";
+    let words = description.split(" ");
+    let currentLength = 0;
+  
+    for (let word of words) {
+      if (currentLength + word.length > threshold) {
+        formattedDescription += "\n";
+
+        currentLength = 0;
+      }
+
+      formattedDescription += word + " ";
+
+      currentLength += word.length + 1;
+    }
+  
+    return formattedDescription.trim();
+  };
+
   return (
     <>
       <Box style={{ padding: "25px", fontFamily: "Arial, sans-serif" }} sx={{ backgroundColor: "#F8F9FA" }}>
@@ -144,13 +192,41 @@ export default function SearchPage() {
             <Typography sx={{ color: "#5F6368", fontSize: "12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {result.url}
             </Typography>
-            <Typography variant="h5" sx={{ color: "#5F6368" }}>
-              <a href={result.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-                {result.title}
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                color: "#5F6368",
+                whiteSpace: "pre-line",
+                wordBreak: "break-word",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: 3
+              }}
+            >
+              <a 
+                href={result.url} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                style={{ textDecoration: "none" }}
+              >
+                {formatTitle(result.title, 70)}
               </a>
             </Typography>
-            <Typography sx={{ color: "#5F6368", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {result.description}
+            <Typography
+              sx={{
+                color: "#5F6368",
+                whiteSpace: "pre-line",
+                wordBreak: "break-word",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: 3
+              }}
+            >
+              {formatDescription(result.description, 100)}
             </Typography>
           </Box>
         ))}
