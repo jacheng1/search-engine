@@ -9,6 +9,8 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [responseTime, setResponseTime] = useState(null);
+  const [searchPerformed, setSearchPerformed] = useState(false);
 
   const handleSearch = async () => {
     if (!query) {
@@ -16,6 +18,7 @@ export default function SearchPage() {
     }
 
     setLoading(true);
+    setSearchPerformed(true);
 
     try {
       const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
@@ -23,6 +26,7 @@ export default function SearchPage() {
 
       if (response.ok) {
         setResults(data.results);
+        setResponseTime(data.response_time);
 
       } else {
         console.error("Error:", data.error);
@@ -118,14 +122,26 @@ export default function SearchPage() {
         }}
       ></div>
       <Box style={{ padding: "20px", marginLeft: "210px", fontFamily: "Arial, sans-serif" }}>
-        <Typography style={{ fontFamily: "Arial, sans-serif" }} sx={{ color: "#5F6368", fontSize: "15px", marginTop: "-20px", marginBottom: "20px" }}>About results (seconds)</Typography>
+        {searchPerformed && (
+          <Typography
+            style={{ fontFamily: "Arial, sans-serif" }}
+            sx={{
+              color: "#5F6368",
+              fontSize: "15px",
+              marginTop: "-20px",
+              marginBottom: "20px",
+            }}
+          >
+            About {results.length} results ({responseTime ? `${responseTime} seconds` : "N/A"})
+          </Typography>
+        )}
         {loading && <Typography variant="h6">Loading...</Typography>}
         {results.map((result, index) => (
           <Box key={index} sx={{ marginBottom: "20px" }}>
             <Typography sx={{ fontSize: "12px" }}>
               {result.domain}
             </Typography>
-            <Typography sx={{ color: "#5F6368", fontSize: "12px" }}>
+            <Typography sx={{ color: "#5F6368", fontSize: "12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {result.url}
             </Typography>
             <Typography variant="h5" sx={{ color: "#5F6368" }}>
@@ -133,7 +149,7 @@ export default function SearchPage() {
                 {result.title}
               </a>
             </Typography>
-            <Typography sx={{ color: "#5F6368" }}>
+            <Typography sx={{ color: "#5F6368", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {result.description}
             </Typography>
           </Box>
