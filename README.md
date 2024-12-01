@@ -1,8 +1,8 @@
 # Zotsearch
 
-## Overview
+## About this Project
 
-A search engine, built from the ground up, that utilizes a corpus of over 55,000 web pages, achieving results in less than 300ms. There are two main steps to our search engine: indexing and searching. Indexing is run as a preprocessing step, which creates a lookup table that stores all of the unique tokens (words) found in the corpus, along with the page in which they were located and a weight associated with its relevancy to the page. The search component handles user-defined queries in the search bar, enabling the engine to scour the index of 55,000 pages to deliver all relevant results.
+A search engine, built from the ground up, that utilizes a corpus of over 55,000 web pages and achieves results in less than 300 ms. There are two main steps to our search engine: indexing and searching. Indexing is run as a preprocessing step, which creates a lookup table that stores all of the unique tokens found in the corpus, along with the page in which they were located and a weight associated with its relevancy to the page. The search component handles user-defined queries in the search bar, enabling the back-end to scour the index of 55,000 pages to deliver all relevant results to the front-end.
 
 
 
@@ -16,11 +16,23 @@ A search engine, built from the ground up, that utilizes a corpus of over 55,000
 
 
 ## Get Started
+
+### Search by Console Interface
+
+```
+cd backend
+python query.py
+```
+
+### Search by Web Interface
+
+In one terminal, execute:
 ```
 cd backend
 python api.py
 ```
 
+In the second terminal, execute:
 ```
 cd frontend
 npm run dev

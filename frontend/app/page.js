@@ -1,8 +1,14 @@
-'use client'
+"use client";
 
 import ClearIcon from "@mui/icons-material/Clear";
 import SearchIcon from "@mui/icons-material/Search";
-import { Box, TextField, Typography, InputAdornment, IconButton } from "@mui/material";
+import {
+  Box,
+  TextField,
+  Typography,
+  InputAdornment,
+  IconButton,
+} from "@mui/material";
 import { useState } from "react";
 
 export default function SearchPage() {
@@ -13,6 +19,7 @@ export default function SearchPage() {
   const [searchPerformed, setSearchPerformed] = useState(false);
 
   const handleSearch = async () => {
+    // If query is empty, do not initialize search
     if (!query) {
       return;
     }
@@ -21,33 +28,34 @@ export default function SearchPage() {
     setSearchPerformed(true);
 
     try {
-      const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
+      const response = await fetch(
+        `/api/search?query=${encodeURIComponent(query)}`,
+      );
       const data = await response.json();
 
       if (response.ok) {
         setResults(data.results);
         setResponseTime(data.response_time);
-
       } else {
         console.error("Error:", data.error);
-
       }
     } catch (error) {
       console.error("Error fetching results:", error);
-
     } finally {
       setLoading(false);
-
     }
   };
 
+  // helper function for clearing search text field
   const handleClear = () => {
     setQuery("");
   };
 
+  // define search engine name/colors
   const colors = ["#4285F4", "#EA4335", "#FBBC05", "#34A853"];
   const text = "Zotsearch";
 
+  // helper function for formatting result title to align with search text field
   const formatTitle = (text, threshold) => {
     if (!text) {
       return "No Title Available";
@@ -56,7 +64,7 @@ export default function SearchPage() {
     let formattedText = "";
     let words = text.split(" ");
     let currentLength = 0;
-  
+
     for (let word of words) {
       if (currentLength + word.length > threshold) {
         formattedText += "\n";
@@ -68,10 +76,11 @@ export default function SearchPage() {
 
       currentLength += word.length + 1;
     }
-  
+
     return formattedText.trim();
   };
 
+  // helper function for formatting result meta description to align with search text field
   const formatDescription = (description, threshold) => {
     if (!description) {
       return "No Description Available";
@@ -80,7 +89,7 @@ export default function SearchPage() {
     let formattedDescription = "";
     let words = description.split(" ");
     let currentLength = 0;
-  
+
     for (let word of words) {
       if (currentLength + word.length > threshold) {
         formattedDescription += "\n";
@@ -92,27 +101,34 @@ export default function SearchPage() {
 
       currentLength += word.length + 1;
     }
-  
+
     return formattedDescription.trim();
   };
 
   return (
     <>
-      <Box style={{ padding: "25px", fontFamily: "Arial, sans-serif" }} sx={{ backgroundColor: "#F8F9FA" }}>
+      <Box
+        style={{ padding: "25px", fontFamily: "Arial, sans-serif" }}
+        sx={{ backgroundColor: "#F8F9FA" }}
+      >
         <Box
           style={{
             display: "flex",
             alignItems: "center",
             gap: "40px",
-            marginBottom: "10px"
+            marginBottom: "10px",
           }}
         >
-          <Typography variant="h4" component="div" style={{ display: "flex", alignItems: "center", margin: 0 }}>
+          <Typography
+            variant="h4"
+            component="div"
+            style={{ display: "flex", alignItems: "center", margin: 0 }}
+          >
             {text.split("").map((char, index) => (
               <span
                 key={index}
                 style={{
-                  color: colors[index % colors.length]
+                  color: colors[index % colors.length],
                 }}
               >
                 {char}
@@ -126,7 +142,7 @@ export default function SearchPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
-                if ((e.key === "Enter") && (e !== "")) {
+                if (e.key === "Enter" && e !== "") {
                   handleSearch();
                 }
               }}
@@ -145,7 +161,7 @@ export default function SearchPage() {
                           width: "1px",
                           height: "36px",
                           backgroundColor: "lightgray",
-                          margin: "0 8px"
+                          margin: "0 8px",
                         }}
                       />
                     )}
@@ -166,10 +182,16 @@ export default function SearchPage() {
           width: "100%",
           marginLeft: 0,
           marginRight: 0,
-          marginBottom: "10px"
+          marginBottom: "10px",
         }}
       ></div>
-      <Box style={{ padding: "20px", marginLeft: "210px", fontFamily: "Arial, sans-serif" }}>
+      <Box
+        style={{
+          padding: "20px",
+          marginLeft: "210px",
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
         {searchPerformed && (
           <Typography
             style={{ fontFamily: "Arial, sans-serif" }}
@@ -180,21 +202,28 @@ export default function SearchPage() {
               marginBottom: "20px",
             }}
           >
-            About {results.length} results ({responseTime ? `${responseTime} seconds` : "N/A"})
+            About {results.length} results (
+            {responseTime ? `${responseTime} seconds` : "N/A"})
           </Typography>
         )}
         {loading && <Typography variant="h6">Loading...</Typography>}
         {results.map((result, index) => (
           <Box key={index} sx={{ marginBottom: "20px" }}>
-            <Typography sx={{ fontSize: "12px" }}>
-              {result.domain}
-            </Typography>
-            <Typography sx={{ color: "#5F6368", fontSize: "12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <Typography sx={{ fontSize: "12px" }}>{result.domain}</Typography>
+            <Typography
+              sx={{
+                color: "#5F6368",
+                fontSize: "12px",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {result.url}
             </Typography>
-            <Typography 
-              variant="h5" 
-              sx={{ 
+            <Typography
+              variant="h5"
+              sx={{
                 color: "#5F6368",
                 whiteSpace: "pre-line",
                 wordBreak: "break-word",
@@ -202,13 +231,13 @@ export default function SearchPage() {
                 textOverflow: "ellipsis",
                 display: "-webkit-box",
                 WebkitBoxOrient: "vertical",
-                WebkitLineClamp: 3
+                WebkitLineClamp: 3,
               }}
             >
-              <a 
-                href={result.url} 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href={result.url}
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{ textDecoration: "none" }}
               >
                 {formatTitle(result.title, 70)}
@@ -223,7 +252,7 @@ export default function SearchPage() {
                 textOverflow: "ellipsis",
                 display: "-webkit-box",
                 WebkitBoxOrient: "vertical",
-                WebkitLineClamp: 3
+                WebkitLineClamp: 3,
               }}
             >
               {formatDescription(result.description, 100)}

@@ -33,14 +33,17 @@ async def fetch_metadata_async(url, session):
             description_meta = soup.find("meta", attrs={"name": "description"})
             description = description_meta["content"].strip() if description_meta else None
 
-            # Fallback to richer content if no meta description or irrelevant content
+            # Fallback to richer content if there is no meta description, or contains irrelevant content
             if not description or re.match(r'^\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}\s*$', description):
                 paragraphs = soup.find_all("p", limit=3)
                 description_candidates = [p.text.strip() for p in paragraphs if p.text.strip()]
+
                 for candidate in description_candidates:
                     if not re.match(r'^\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}\s*$', candidate):
                         description = candidate
+
                         break
+
                 if not description:
                     description = "No Description Available"
 
@@ -69,9 +72,11 @@ async def enrich_results(search_results):
             fetch_metadata_async(result[0], session)
             for result in search_results
         ]
+
         enriched_results = await asyncio.gather(*tasks)
         for enriched_result, score in zip(enriched_results, (r[1] for r in search_results)):
             enriched_result["score"] = score
+            
         return enriched_results
 
 @app.route('/search', methods=['GET'])
