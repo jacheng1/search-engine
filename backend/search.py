@@ -10,7 +10,9 @@ def tokenize_query(query):
     """
     Tokenizes and stems the query terms.
     """
+
     ps = PorterStemmer()
+
     tokens = word_tokenize(query.lower())
 
     return [ps.stem(word) for word in tokens if word.isalnum()]
@@ -19,6 +21,7 @@ def count_documents(doc_id_file):
     """
     Counts the total number of documents listed in the doc_id.txt file.
     """
+
     try:
         with open(doc_id_file, "r", encoding="UTF-8") as file:
             total_docs = sum(1 for _ in file)
@@ -33,6 +36,7 @@ def load_index_and_vocab():
     """
     Loads the partial index and vocabulary into memory.
     """
+
     index = defaultdict(lambda: defaultdict(float))
     doc_url_map = {}
     vocab = {}
@@ -80,6 +84,7 @@ def search_query(query, index, doc_url_map):
     """
     Process the search query and retrieve ranked documents.
     """
+    
     query_terms = tokenize_query(query)
 
     document_scores = defaultdict(float)

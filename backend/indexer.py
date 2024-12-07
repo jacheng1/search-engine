@@ -24,12 +24,15 @@ NUM_OF_DOCS = 56000
 def create_directory():
     try:
         os.makedirs("partial-index", exist_ok=True) 
+
         print("Directory 'partial-index' is ready.")
+
     except FileExistsError as e:
         print(f"Error creating directory: {e}")
 
 def tokenize_text(text:str)->list:
     ps = PorterStemmer()
+
     alnum_list = []
     word_list = word_tokenize(text)
 
@@ -49,22 +52,32 @@ class Indexer:
         self.partial_dict = self.create_partial_files()
     
     def create_partial_files(self):
-        # Creates and keeps open all partial index files.
+        """
+        Creates and keeps open all partial index files.
+        """
+
         partial_dict = {}
         index_range = string.ascii_lowercase + string.digits + "!" # ! for non english symbols
         for i in index_range:
             path = f"partial-index/{i}.txt"
+
             partial_dict[i] = open(path, "a", encoding="UTF-8")
         
         return partial_dict
     
     def close_partial_files(self):
-        # Closes all partial index files
+        """"
+        Closes all partial index files
+        """
+
         for file in self.partial_dict.values():
             file.close()
 
     def process_zip(self, zip_path):
-        # Process zip file and build index
+        """
+        Process zip file and build index
+        """
+
         with open("doc_id.txt", "a", encoding="UTF-8") as lookup:
             with zipfile.ZipFile(zip_path, "r") as zippedFile:
                 files = zippedFile.namelist()
@@ -72,11 +85,15 @@ class Indexer:
                     try:
                         if file_name.endswith('.json'):
                             self.process_json_file(zippedFile, file_name, lookup)
+
                     except Exception as e:
                         print(f"Error processing file {file_name}: {e}")
 
     def process_json_file(self, zippedFile, file_name, lookup):
-        # Process JSON file and update the index
+        """
+        Process JSON file and update the index
+        """
+
         with zippedFile.open(file_name) as json_file:
             try:
                 json_content = json_file.read()
@@ -91,6 +108,7 @@ class Indexer:
 
                 if important_text_len > 0:
                     self.doc_id += 1
+
                     lookup.write(f"{self.doc_id} {json_dict['url']}\n")
                 
                 self.offload_data_if_needed()
@@ -101,13 +119,17 @@ class Indexer:
                 print(f"KeyError: Missing expected key in '{file_name}' - {e}: Skipping file.")
 
     def process_important_text(self, page_soup):
-        # Process important text (headings, title, etc).
-        # Frequencies are saved in the second position in index entry
+        """
+        Process important text (headings, title, etc).
+        Frequencies are saved in the second position in index entry
+        """
+
         text = page_soup.find_all(['title', 'h1', 'h2', 'h3', 'b', 'strong'])
         important_text_len = len(text)
 
         for word_chunk in text:
             word_list = tokenize_text(word_chunk.get_text())
+
             word_freq = compute_word_frequencies(word_list)
             for key in word_freq:
                 self.index[key][self.doc_id][1] += word_freq[key]
@@ -115,8 +137,11 @@ class Indexer:
         return important_text_len
 
     def process_normal_text(self, page_soup):
-        # Process rest of text
-        # Frequencies are saved in the first position in index entry
+        """
+        Process rest of text
+        Frequencies are saved in the first position in index entry
+        """
+
         skipped_tags = ['title', 'h1', 'h2', 'h3', 'b', 'strong']
         for tag in skipped_tags:
             [s.extract() for s in page_soup(tag)]
@@ -124,15 +149,18 @@ class Indexer:
         text = page_soup.find_all()
         for word_chunk in text:
             word_list = tokenize_text(word_chunk.get_text())
+
             word_freq = compute_word_frequencies(word_list)
             for key in word_freq:
                 self.index[key][self.doc_id][0] += word_freq[key]
         
 
     def offload_data_if_needed(self):
-        # Offload data to partial index 
-        # Checks if doc_id exceeds any threshold and triggers offload to save 
-        # current index to partial index files 
+        """
+        Offload data to partial index 
+        Checks if doc_id exceeds any threshold and triggers offload to save current index to partial index files 
+        """
+
         offload_thresholds = [
             (self.num_of_docs / 5),
             (self.num_of_docs / 5) * 2,
@@ -143,13 +171,17 @@ class Indexer:
         for threshold in offload_thresholds:
             if self.doc_id > threshold:
                 self.index = offload(self.index, self.partial_dict)
+                
                 break
 
 # End of class
 
 def offload(my_dict, p_dict)->defaultdict:
-    # Offload data into partial index file
-    # Writes current in-memory index to appropriate partial index file in p_dict
+    """
+    Offload data into partial index file
+    Writes current in-memory index to appropriate partial index file in p_dict
+    """
+
     index_list = sorted(my_dict.items(), key=lambda x: (x[0]))
 
     for elem in index_list:
@@ -165,10 +197,11 @@ def offload(my_dict, p_dict)->defaultdict:
     
 
 def update_index(files, doc_nums):
-    # Updates the vocabulary and final index
-    # Uses tf-idf for each term-document pair
-    # Final index data back to partial index files and records vocabulary 
-    # in vocab.txt
+    """
+    Updates the vocabulary and final index
+    Uses tf-idf for each term-document pair
+    Final index data back to partial index files and records vocabulary in vocab.txt
+    """
 
     with open("vocab.txt", "a", encoding="UTF-8") as vocab:
         # Format is term doc_id/tf_idf
@@ -217,4 +250,3 @@ if __name__ == "__main__":
     update_index(indexer.partial_dict, indexer.doc_id)
 
     indexer.close_partial_files()
-    

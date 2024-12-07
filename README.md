@@ -21,7 +21,7 @@ A search engine, built from the ground up, that utilizes a corpus of over 55,000
 
 ```
 cd backend
-python query.py
+python search.py
 ```
 
 ### Search by Web Interface
@@ -32,7 +32,7 @@ cd backend
 python api.py
 ```
 
-In the second terminal, execute:
+In a second terminal, execute:
 ```
 cd frontend
 npm run dev

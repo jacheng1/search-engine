@@ -6,7 +6,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 from flask import Flask, request, jsonify
 from tldextract import extract
-from query import load_index_and_vocab, search_query
+from search import load_index_and_vocab, search_query
 
 app = Flask(__name__)
 
