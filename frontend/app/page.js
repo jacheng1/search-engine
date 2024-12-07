@@ -203,7 +203,7 @@ export default function SearchPage() {
             }}
           >
             About {results.length} results (
-            {responseTime ? `${responseTime} seconds` : "N/A"})
+            {responseTime ? `${responseTime} ms` : "0.00 ms"})
           </Typography>
         )}
         {loading && <Typography variant="h6">Loading...</Typography>}

@@ -99,7 +99,9 @@ def search_query(query, index, doc_url_map):
             relevant_docs = set()
 
     if not relevant_docs:
-        return []
+        return [], 0
+    
+    start_time = time.perf_counter()
 
     # Calculate the cumulative score for each document
     for term in query_terms:
@@ -110,8 +112,13 @@ def search_query(query, index, doc_url_map):
     # Rank documents by score
     ranked_docs = sorted(document_scores.items(), key=lambda x: x[1], reverse=True)
 
-    # Map doc_ids to URLs and return
-    return [(doc_url_map[doc_id], score) for doc_id, score in ranked_docs]
+    end_time = time.perf_counter()
+    response_time = (end_time - start_time) * 1000
+
+    # Map doc_ids to URLs
+    results = [(doc_url_map[doc_id], score) for doc_id, score in ranked_docs]
+
+    return results, response_time
 
 def main():
     # Load the index and vocab
@@ -123,21 +130,14 @@ def main():
         if query.lower() == "exit":
             break
 
-        start_time = time.perf_counter()
-        results = search_query(query, index, doc_url_map)
-        end_time = time.perf_counter()
-        response_time = (end_time - start_time) * 1000
+        results, response_time = search_query(query, index, doc_url_map)
 
         # Search and display results
-        results = search_query(query, index, doc_url_map)
         if results:
-            result_num = 1
-
             print("\nTop results:")
-            for url, score in results:
-                print(f"{result_num}. {url} (Score: {score:.4f})")
-
-                result_num += 1
+            
+            for i, (url, score) in enumerate(results, start=1):
+                print(f"{i}. {url} (Score: {score:.4f})")
         else:
             print("No results found for your query.\n")
 

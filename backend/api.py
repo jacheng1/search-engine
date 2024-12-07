@@ -85,16 +85,11 @@ def search():
     if not query:
         return jsonify({"error": "Query parameter is required"}), 400
 
-    start_time = time.time()
-
     # Perform the query search
-    search_results = search_query(query, index, doc_url_map)
+    search_results, response_time = search_query(query, index, doc_url_map)
 
     # Enrich results with metadata (run asyncio loop)
     enriched_results = asyncio.run(enrich_results(search_results))
-
-    end_time = time.time()
-    response_time = end_time - start_time
 
     return jsonify({
         "results": enriched_results,
