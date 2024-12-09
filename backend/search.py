@@ -83,27 +83,18 @@ def search_query(query, index, doc_url_map):
     """
     Process the search query and retrieve ranked documents.
     """
-    
+
     query_terms = tokenize_query(query)
     document_scores = defaultdict(float)
+    relevant_docs = set()
 
-    # Retrieve documents containing all query terms
-    relevant_docs = None
     for term in query_terms:
         if term in index:
-            term_docs = set(index[term].keys())
-
-            if relevant_docs is None:
-                relevant_docs = term_docs
-            else:
-                relevant_docs &= term_docs
-        else:
-            # No match; contains no result
-            relevant_docs = set()
+            relevant_docs.update(index[term].keys())
 
     if not relevant_docs:
         return [], 0
-    
+
     start_time = time.perf_counter()
 
     # Calculate the cumulative score for each document
@@ -112,7 +103,12 @@ def search_query(query, index, doc_url_map):
             if doc_id in index[term]:
                 document_scores[doc_id] += index[term][doc_id]
 
-    # Rank documents by score
+    # Normalize scores by the number of query terms
+    num_query_terms = len(query_terms)
+    for doc_id in document_scores:
+        document_scores[doc_id] /= num_query_terms
+
+    # Rank documents by combined score
     ranked_docs = sorted(document_scores.items(), key=lambda x: x[1], reverse=True)
 
     end_time = time.perf_counter()
@@ -141,9 +137,6 @@ def main():
             print("\nTop results:")
             
             for i, (url, score) in enumerate(results, start=1):
-                if i > 100:
-                    break
-
                 print(f"{i}. {url} (Score: {score:.4f})")
         else:
             print("No results found for your query.\n")
