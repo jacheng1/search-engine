@@ -86,11 +86,16 @@ def search_query(query, index, doc_url_map):
 
     query_terms = tokenize_query(query)
     document_scores = defaultdict(float)
-    relevant_docs = set()
+    relevant_docs = None
 
     for term in query_terms:
         if term in index:
-            relevant_docs.update(index[term].keys())
+            term_docs = set(index[term].keys())
+
+            if relevant_docs is None:
+                relevant_docs = term_docs
+            else:
+                relevant_docs &= term_docs
 
     if not relevant_docs:
         return [], 0

@@ -207,7 +207,7 @@ def offload(index, partial_dict) -> defaultdict:
         partial_file.write(f"{elem[0]} ")
 
         for doc, count in elem[1].items():
-            partial_file.write(f"{doc}.{count[0]}.{count[1]}")
+            partial_file.write(f"{doc}.{count[0]}.{count[1]} ")
 
         partial_file.write("\n")
 
