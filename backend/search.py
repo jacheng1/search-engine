@@ -13,8 +13,8 @@ def tokenize_query(query):
     """
 
     ps = PorterStemmer()
-    tokens = word_tokenize(query.lower())
-    return [ps.stem(word) for word in tokens if word.isalnum()]
+    tokens = word_tokenize(query)
+    return [ps.stem(word, True) for word in tokens if word.isalnum()]
 
 
 def count_documents(doc_id_file):
@@ -46,39 +46,38 @@ def load_index_and_vocab():
 
     # Load doc_id to URL mapping
     with open("doc_id.txt", "r", encoding="UTF-8") as lookup:
-        for line in lookup:
-            doc_id, url = line.strip().split(" ", 1)
-
+        for term_line in lookup:
+            doc_id, url = term_line.strip().split(" ", 1)
             doc_url_map[int(doc_id)] = url
 
     # Load vocabulary
     with open("vocab.txt", "r", encoding="UTF-8") as vocab_file:
-        for line in vocab_file:
-            term, offset = line.strip().split(" ")
-
+        for term_line in vocab_file:
+            term, offset = term_line.strip().split(" ")
             vocab[term] = int(offset)
 
     # Load partial index
-    for file_name in os.listdir("partial-index"):
-        with open(f"partial-index/{file_name}", "r", encoding="UTF-8") as file:
-            for line in file:
-                parts = line.strip().split(" ")
-                term = parts[0]
+    for letter in os.listdir("partial-index"):
+        with open(f"partial-index/{letter}", "r", encoding="UTF-8") as letter_file:
+            for term_line in letter_file:
+                postings = term_line.strip().split(" ")
+                term = postings[0]
 
-                for doc_data in parts[1:]:
-                    if "/" in doc_data:
-                        doc_id, score = map(float, doc_data.split("/"))
-                        index[term][int(doc_id)] = score
-                    elif "." in doc_data:
-                        doc_id, freq1, freq2 = map(float, doc_data.split("."))
-                        tf = 1 + freq1 + (freq2 * 2)
-                        df = len(parts) - 1
+                for posting in postings[1:]:
+                    if "/" in posting:
+                        doc_id, tf_idf = map(float, posting.split("/"))
+                        index[term][int(doc_id)] = tf_idf
+                    elif "." in posting:
+                        doc_id, reg_freq, imp_freq = map(float, posting.split("."))
+                        tf = reg_freq + (imp_freq * 2)
+                        df = len(postings) - 1
                         tf_idf = (1 + math.log10(tf)) * math.log10(num_docs / df)
                         index[term][int(doc_id)] = tf_idf
                     else:
-                        print(f"Unexpected format: {doc_data}")
-    
+                        print(f"Unexpected format: {posting}")
+
     return index, doc_url_map, vocab
+
 
 def search_query(query, index, doc_url_map):
     """
@@ -86,7 +85,6 @@ def search_query(query, index, doc_url_map):
     """
     
     query_terms = tokenize_query(query)
-
     document_scores = defaultdict(float)
 
     # Retrieve documents containing all query terms
@@ -125,6 +123,7 @@ def search_query(query, index, doc_url_map):
 
     return results, response_time
 
+
 def main():
     # Load the index and vocab
     index, doc_url_map, vocab = load_index_and_vocab()
@@ -150,6 +149,7 @@ def main():
             print("No results found for your query.\n")
 
         print(f"\nResponse time: {response_time:.2f} ms\n")
+
 
 if __name__ == "__main__":
     main()
