@@ -12,8 +12,6 @@ from collections import defaultdict
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 
-from tokenizers.remo.PartA import tokenize, compute_word_frequencies
-
 # Tokens: all alphanumeric sequences in the dataset.
 # Stop words: do not use stopping, i.e. use all words, even the frequently occurring ones.
 # Stemming: use stemming for better textual matches. Suggestion: Porter stemming.
@@ -37,11 +35,12 @@ def tokenize_text(text:str)->list:
     word_list = word_tokenize(text)
 
     for word in word_list:
-        word = ps.stem(word)
+        word = ps.stem(word, True)
         if word.isalnum():
             alnum_list.append(word)
     
     return alnum_list
+
 
 # Indexing and file parsing
 class Indexer:
@@ -60,11 +59,10 @@ class Indexer:
         index_range = string.ascii_lowercase + string.digits + "!" # ! for non english symbols
         for i in index_range:
             path = f"partial-index/{i}.txt"
-
             partial_dict[i] = open(path, "a", encoding="UTF-8")
-        
+
         return partial_dict
-    
+
     def close_partial_files(self):
         """"
         Closes all partial index files
@@ -73,28 +71,12 @@ class Indexer:
         for file in self.partial_dict.values():
             file.close()
 
-    def process_zip(self, zip_path):
-        """
-        Process zip file and build index
-        """
-
-        with open("doc_id.txt", "a", encoding="UTF-8") as lookup:
-            with zipfile.ZipFile(zip_path, "r") as zippedFile:
-                files = zippedFile.namelist()
-                for file_name in files:
-                    try:
-                        if file_name.endswith('.json'):
-                            self.process_json_file(zippedFile, file_name, lookup)
-
-                    except Exception as e:
-                        print(f"Error processing file {file_name}: {e}")
-
-    def process_json_file(self, zippedFile, file_name, lookup):
+    def process_json(self, path, lookup):
         """
         Process JSON file and update the index
         """
 
-        with zippedFile.open(file_name) as json_file:
+        with open(path) as json_file:
             try:
                 json_content = json_file.read()
                 json_dict = json.loads(json_content)
@@ -106,17 +88,31 @@ class Indexer:
                 # Process rest of text
                 self.process_normal_text(page_soup)
 
-                if important_text_len > 0:
-                    self.doc_id += 1
+                # Add to doc_ids
+                self.doc_id += 1
+                lookup.write(f"{self.doc_id} {json_dict['url']}\n")
 
-                    lookup.write(f"{self.doc_id} {json_dict['url']}\n")
-                
                 self.offload_data_if_needed()
-            
+
             except json.JSONDecodeError as e:
-                print(f"JSONDecodeError in file {file_name}: Skipping file.")
+                print(f"JSONDecodeError in file {path}: Skipping file.")
             except KeyError as e:
-                print(f"KeyError: Missing expected key in '{file_name}' - {e}: Skipping file.")
+                print(f"KeyError: Missing expected key in '{path}' - {e}: Skipping file.")
+
+    def process_directory(self, directory):
+        """
+        Process process_directory and build index
+        """
+
+        with open("doc_id.txt", "a", encoding="UTF-8") as lookup:
+            for root, dirs, files in os.walk(directory):
+                for file in files:
+                    path = os.path.join(root, file)
+                    try:
+                        if path.endswith('.json'):
+                            self.process_json(path, lookup)
+                    except Exception as e:
+                        print(f"Error processing file {path}: {e}")
 
     def process_important_text(self, page_soup):
         """
@@ -130,7 +126,7 @@ class Indexer:
         for word_chunk in text:
             word_list = tokenize_text(word_chunk.get_text())
 
-            word_freq = compute_word_frequencies(word_list)
+            word_freq = self.compute_word_frequencies(word_list)
             for key in word_freq:
                 self.index[key][self.doc_id][1] += word_freq[key]
         
@@ -150,10 +146,23 @@ class Indexer:
         for word_chunk in text:
             word_list = tokenize_text(word_chunk.get_text())
 
-            word_freq = compute_word_frequencies(word_list)
+            word_freq = self.compute_word_frequencies(word_list)
             for key in word_freq:
                 self.index[key][self.doc_id][0] += word_freq[key]
-        
+
+    def compute_word_frequencies(self, token_list: list[str]) -> dict[str, int]:
+        """
+        Count the number of occurrences of each token in the token list.
+        """
+
+        token_dict = {}
+        for token in token_list:
+            if token in token_dict:
+                token_dict[token] += 1
+            else:
+                token_dict[token] = 1
+
+        return token_dict
 
     def offload_data_if_needed(self):
         """
@@ -243,7 +252,7 @@ def update_index(files, doc_nums):
 
 if __name__ == "__main__":
     indexer = Indexer(NUM_OF_DOCS)
-    indexer.process_zip("developer.zip")
+    indexer.process_directory("./developer")
 
     # Offload and update the final index after all files are processed
     offload(indexer.index, indexer.partial_dict)
