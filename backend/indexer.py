@@ -1,6 +1,5 @@
 import os
 import json
-import zipfile
 import string
 import math
 import nltk
@@ -19,6 +18,7 @@ from nltk.tokenize import word_tokenize
 
 NUM_OF_DOCS = 56000
 
+
 def create_directory():
     try:
         os.makedirs("partial-index", exist_ok=True) 
@@ -27,6 +27,7 @@ def create_directory():
 
     except FileExistsError as e:
         print(f"Error creating directory: {e}")
+
 
 def tokenize_text(text:str)->list:
     ps = PorterStemmer()
@@ -50,6 +51,7 @@ class Indexer:
         self.doc_id = 0
         self.partial_dict = self.create_partial_files()
     
+    
     def create_partial_files(self):
         """
         Creates and keeps open all partial index files.
@@ -63,6 +65,7 @@ class Indexer:
 
         return partial_dict
 
+
     def close_partial_files(self):
         """"
         Closes all partial index files
@@ -70,6 +73,7 @@ class Indexer:
 
         for file in self.partial_dict.values():
             file.close()
+
 
     def process_json(self, path, lookup):
         """
@@ -99,6 +103,7 @@ class Indexer:
             except KeyError as e:
                 print(f"KeyError: Missing expected key in '{path}' - {e}: Skipping file.")
 
+
     def process_directory(self, directory):
         """
         Process process_directory and build index
@@ -113,6 +118,7 @@ class Indexer:
                             self.process_json(path, lookup)
                     except Exception as e:
                         print(f"Error processing file {path}: {e}")
+
 
     def process_important_text(self, page_soup):
         """
@@ -132,6 +138,7 @@ class Indexer:
         
         return important_text_len
 
+
     def process_normal_text(self, page_soup):
         """
         Process rest of text
@@ -150,6 +157,7 @@ class Indexer:
             for key in word_freq:
                 self.index[key][self.doc_id][0] += word_freq[key]
 
+
     def compute_word_frequencies(self, token_list: list[str]) -> dict[str, int]:
         """
         Count the number of occurrences of each token in the token list.
@@ -164,6 +172,7 @@ class Indexer:
 
         return token_dict
 
+
     def offload_data_if_needed(self):
         """
         Offload data to partial index 
@@ -171,30 +180,30 @@ class Indexer:
         """
 
         offload_thresholds = [
-            (self.num_of_docs / 5),
-            (self.num_of_docs / 5) * 2,
-            (self.num_of_docs / 5) * 3,
-            (self.num_of_docs / 5) * 4
+            (self.num_of_docs // 5),
+            (self.num_of_docs // 5) * 2,
+            (self.num_of_docs // 5) * 3,
+            (self.num_of_docs // 5) * 4
         ]
 
         for threshold in offload_thresholds:
-            if self.doc_id > threshold:
+            if self.doc_id == threshold:
                 self.index = offload(self.index, self.partial_dict)
-                
                 break
 
-# End of class
+    # End of class
 
-def offload(my_dict, p_dict)->defaultdict:
+
+def offload(index, partial_dict) -> defaultdict:
     """
     Offload data into partial index file
     Writes current in-memory index to appropriate partial index file in p_dict
     """
 
-    index_list = sorted(my_dict.items(), key=lambda x: (x[0]))
+    index_list = sorted(index.items(), key=lambda x: (x[0]))
 
     for elem in index_list:
-        partial_file = p_dict.get(elem[0][0], p_dict["!"])
+        partial_file = partial_dict.get(elem[0][0], partial_dict["!"])
         partial_file.write(f"{elem[0]} ")
 
         for doc, count in elem[1].items():
@@ -203,7 +212,7 @@ def offload(my_dict, p_dict)->defaultdict:
         partial_file.write("\n")
 
     return defaultdict(lambda: defaultdict(lambda: [0, 0]))  # Resets the index
-    
+
 
 def update_index(files, doc_nums):
     """
@@ -213,44 +222,55 @@ def update_index(files, doc_nums):
     """
 
     with open("vocab.txt", "a", encoding="UTF-8") as vocab:
-        # Format is term doc_id/tf_idf
+        # Format: "term doc_id/tf_idf"
         for letter in sorted(files.keys()): # iterate over each partial index file
 
-            with open(f"partial-index/{letter}.txt", "r+", encoding="UTF-8") as file:
+            with open(f"partial-index/{letter}.txt", "r+", encoding="UTF-8") as letter_file:
                 partial_index = defaultdict(lambda: defaultdict())
 
-                file.seek(0)
-                lines = file.readlines()
+                letter_file.seek(0)
+                term_lines = letter_file.readlines()
 
-                for line in lines:
-                    split_line = line.split()
+                # For each term:
+                for term_line in term_lines:
+                    postings = term_line.split()
+                    term = postings[0]
 
-                    # split_posting[0] : doc_id
-                    # split_posting[1] : regular text frequency
-                    # split_posting[2] : important text frequency
-                    for posting in split_line[1:]:
-                        split_posting = posting.split(".") 
-                        tf = 1 + int(split_posting[1]) + (int(split_posting[2]) * 2) # term freq
-                        df = len(split_line[1:]) # doc freq
-                        tf_idf = (1 + math.log10(tf)) * math.log(doc_nums / df)
-                        partial_index[split_line[0]][int(split_posting[0])] = tf_idf
-                    
-                file.seek(0)
-                file.truncate(0)
+                    # For each doc:
+                    for posting in postings[1:]:
+                        split_posting = posting.split(".")
+                        doc_id = split_posting[0]
+                        reg_freq = split_posting[1]
+                        imp_freq = split_posting[2]
 
+                        # Calculate tf_idf
+                        tf = int(reg_freq) + (int(imp_freq) * 2)
+                        df = len(postings[1:])
+                        tf_idf = (1 + math.log10(tf)) * math.log10(doc_nums / df)
+                        
+                        # Update tf_idf in partial index
+                        partial_index[term][int(doc_id)] = tf_idf
+
+                # Clear letter file
+                letter_file.seek(0)
+                letter_file.truncate(0)
+
+                # Write term offsets to vocab
                 for key, value in sorted(partial_index.items(), key = lambda x: x[0]):
                     try:
-                        vocab.write(f"{key} {file.tell()}\n")
+                        vocab.write(f"{key} {letter_file.tell()}\n")
                     except Exception as e:
                         print(f"Error writing to vocab file: {e}")
-                    
+
                     # Write term postings to partial index file
-                    file.write(f"{key}")
+                    letter_file.write(f"{key}")
                     for document, score in sorted(value.items(), key = lambda x: x[0]):
-                        file.write(f" {document}/{score}")
-                    file.write("\n")
+                        letter_file.write(f" {document}/{score}")
+                    letter_file.write("\n")
+
 
 if __name__ == "__main__":
+    create_directory()
     indexer = Indexer(NUM_OF_DOCS)
     indexer.process_directory("./developer")
 

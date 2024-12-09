@@ -6,16 +6,16 @@ from collections import defaultdict
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
 
+
 def tokenize_query(query):
     """
     Tokenizes and stems the query terms.
     """
 
     ps = PorterStemmer()
-
     tokens = word_tokenize(query.lower())
-
     return [ps.stem(word) for word in tokens if word.isalnum()]
+
 
 def count_documents(doc_id_file):
     """
@@ -25,12 +25,12 @@ def count_documents(doc_id_file):
     try:
         with open(doc_id_file, "r", encoding="UTF-8") as file:
             total_docs = sum(1 for _ in file)
-
         return total_docs
+
     except FileNotFoundError:
         print(f"Error: {doc_id_file} not found.")
-
         return 0
+
 
 def load_index_and_vocab():
     """
@@ -66,18 +66,18 @@ def load_index_and_vocab():
                 term = parts[0]
 
                 for doc_data in parts[1:]:
-                    # Parse format `doc_id.freq1.freq2` for each line in partial-index/ .txt files
-                    doc_id, freq1, freq2 = map(float, doc_data.split("."))
-
-                    # Compute term/document frequencies
-                    tf = 1 + freq1 + (freq2 * 2)
-                    df = len(parts) - 1
-
-                    tf_idf = (1 + math.log10(tf)) * math.log10(num_docs / df)
-
-                    # Update the index
-                    index[term][int(doc_id)] = tf_idf
-
+                    if "/" in doc_data:
+                        doc_id, score = map(float, doc_data.split("/"))
+                        index[term][int(doc_id)] = score
+                    elif "." in doc_data:
+                        doc_id, freq1, freq2 = map(float, doc_data.split("."))
+                        tf = 1 + freq1 + (freq2 * 2)
+                        df = len(parts) - 1
+                        tf_idf = (1 + math.log10(tf)) * math.log10(num_docs / df)
+                        index[term][int(doc_id)] = tf_idf
+                    else:
+                        print(f"Unexpected format: {doc_data}")
+    
     return index, doc_url_map, vocab
 
 def search_query(query, index, doc_url_map):
@@ -142,6 +142,9 @@ def main():
             print("\nTop results:")
             
             for i, (url, score) in enumerate(results, start=1):
+                if i > 100:
+                    break
+
                 print(f"{i}. {url} (Score: {score:.4f})")
         else:
             print("No results found for your query.\n")
